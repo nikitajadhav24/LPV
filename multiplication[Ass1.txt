@@ -1,0 +1,70 @@
+# Client.java
+
+import java.rmi.*;
+
+public class Client {
+	public static void main(String args[]){
+		try {
+			String rmiURL = "rmi://localhost/Server";
+			ServerInterface serverInterface = (ServerInterface) Naming.lookup(rmiURL);
+			double num1 = Double.parseDouble(args[0]);
+			double num2 = Double.parseDouble(args[1]);
+			double result = serverInterface.multi(num1, num2);
+			System.out.println("At Client: multi(" + num1 + "," + num2 + ") = " + result);
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+
+# Server.java
+
+import java.rmi.*;
+
+public class Server {
+	public static void main(String args[]) {
+		try {
+			ServerImplementation serverImplementation = new ServerImplementation();
+			Naming.rebind("Server", serverImplementation);
+			System.out.println("Server Started...");
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+
+# ServerImplementation.java
+
+import java.rmi.*;
+import java.rmi.server.*;
+
+public class ServerImplementation extends UnicastRemoteObject implements ServerInterface {
+	public ServerImplementation() throws RemoteException {}
+	public double multi(double num1, double num2) {
+		double result = num1 * num2;
+		System.out.println("At Server: multi(" + num1 + "," + num2 + ") = " + result);
+		return result;
+	}
+}
+
+
+# ServerInterface.java
+
+import java.rmi.*;
+
+public interface ServerInterface extends Remote {
+	double multi(double num1, double num2) throws RemoteException;
+}
+
+
+# Commands :
+
+javac *.java
+rmic ServerImplementation
+rmiregistry
+
+java Server
+
+java Client 10 20

@@ -1,0 +1,68 @@
+# Client.java
+
+import java.rmi.*;
+
+public class Client {
+	public static void main(String args[]){
+		try {
+			String rmiURL = "rmi://localhost/Server";
+			ServerInterface serverInterface = (ServerInterface) Naming.lookup(rmiURL);
+			double num = Double.parseDouble(args[0]);
+			System.out.println("At Client: square(" + num + ") = " + serverInterface.square(num));
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+
+# Server.java
+
+import java.rmi.*;
+
+public class Server {
+	public static void main(String args[]){
+		try {
+			ServerImplementation serverImplementation = new ServerImplementation();
+			Naming.rebind("Server", serverImplementation);
+			System.out.println("Server Started...");
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+
+# ServerImplementation.java
+
+import java.rmi.*;
+import java.rmi.server.*;
+
+public class ServerImplementation extends UnicastRemoteObject implements ServerInterface {
+	public ServerImplementation() throws RemoteException {}
+	public double square(double num){
+		double result = num * num;
+		System.out.println("At Server: square(" + num + ") = " + result);
+		return result;
+	}
+}
+
+
+# ServerInterface.java
+
+import java.rmi.*;
+
+public interface ServerInterface extends Remote {
+	double square(double num) throws RemoteException;
+}
+
+
+# Commands 
+
+javac *.java
+rmic ServerImplementation
+rmiregistry
+
+java Server
+
+java Client 25

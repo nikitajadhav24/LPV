@@ -1,0 +1,176 @@
+# ClockClient.java
+
+import java.io.*;
+import java.net.*;
+import java.text.*;
+import java.util.*;
+
+public class ClockClient {
+    private Socket socket;
+    private DataOutputStream out;
+    private BufferedReader in;
+
+    public ClockClient(String serverAddress, int serverPort) throws IOException {
+        socket = new Socket(serverAddress, serverPort);
+        out = new DataOutputStream(socket.getOutputStream());
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+        new Thread(this::sendTime).start();
+        new Thread(this::receiveTime).start();
+    }
+
+    private void sendTime() {
+        try {
+            while (true) {
+                String currentTime = new Date().toString();
+                out.writeUTF(currentTime);
+                out.flush();
+                System.out.println("Time sent to server: " + currentTime);
+                Thread.sleep(5000);
+            }
+        } catch (Exception e) {
+            System.out.println("Error sending time to server: " + e.getMessage());
+        }
+    }
+
+    private void receiveTime() {
+        try {
+            while (true) {
+                String syncedTime = in.readLine();
+                if (syncedTime != null) {
+                    System.out.println("Synchronized time from server: " + syncedTime);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error receiving time from server: " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            new ClockClient("localhost", 8080);
+        } catch (IOException e) {
+            System.out.println("Client error: " + e.getMessage());
+        }
+    }
+}
+
+
+# ClockServer.java
+
+import java.io.*;
+import java.net.*;
+import java.text.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+class ClientHandler {
+    Socket socket;
+    BufferedReader in;
+    DataOutputStream out;
+    long timeDiff;
+
+    public ClientHandler(Socket socket) throws IOException {
+        this.socket = socket;
+        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        this.out = new DataOutputStream(socket.getOutputStream());
+    }
+}
+
+public class ClockServer {
+    private ServerSocket serverSocket;
+    private ConcurrentHashMap<SocketAddress, ClientHandler> clients = new ConcurrentHashMap<>();
+
+    public ClockServer(int port) throws IOException {
+        serverSocket = new ServerSocket(port);
+    }
+
+    public void start() {
+        new Thread(this::acceptClients).start();
+        new Thread(this::syncClocks).start();
+    }
+
+    private void acceptClients() {
+        try {
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                SocketAddress clientAddress = clientSocket.getRemoteSocketAddress();
+                System.out.println("Client connected: " + clientAddress);
+                ClientHandler handler = new ClientHandler(clientSocket);
+                clients.put(clientAddress, handler);
+                new Thread(() -> receiveTime(clientAddress)).start();
+            }
+        } catch (IOException e) {
+            System.out.println("Error accepting clients: " + e.getMessage());
+        }
+    }
+
+    private void receiveTime(SocketAddress clientAddress) {
+        ClientHandler handler = clients.get(clientAddress);
+        try {
+    while (true) {
+        String clientTimeStr = handler.in.readLine();
+        if (clientTimeStr != null) {
+            SimpleDateFormat format = new SimpleDateFormat("E MMM dd HH:mm:ss z yyyy", Locale.ENGLISH);
+            Date clientTime = format.parse(clientTimeStr);
+            Date serverTime = new Date();
+            handler.timeDiff = serverTime.getTime() - clientTime.getTime();
+            System.out.println("Time received from: " + clientAddress);
+        }
+    }
+} catch (Exception e) {
+    System.out.println("Error receiving time from " + clientAddress + ": " + e.getMessage());
+    clients.remove(clientAddress);
+}
+    }
+
+    private void syncClocks() {
+        while (true) {
+            try {
+                if (!clients.isEmpty()) {
+                    long sumDiffs = 0;
+                    int count = 0;
+                    for (ClientHandler handler : clients.values()) {
+                        sumDiffs += handler.timeDiff;
+                        count++;
+                    }
+                    long avgDiff = (count > 0) ? sumDiffs / count : 0;
+                    Date synchronizedTime = new Date(System.currentTimeMillis() + avgDiff);
+
+                    for (Map.Entry<SocketAddress, ClientHandler> entry : clients.entrySet()) {
+                        try {
+                            entry.getValue().out.writeBytes(synchronizedTime.toString() + "\n");
+                            entry.getValue().out.flush();
+                            System.out.println("Synchronized time sent to " + entry.getKey());
+                        } catch (IOException e) {
+                            System.out.println("Error sending time to " + entry.getKey());
+                            clients.remove(entry.getKey());
+                        }
+                    }
+                }
+                Thread.sleep(5000);
+            } catch (Exception e) {
+                System.out.println("Error syncing clocks: " + e.getMessage());
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            ClockServer server = new ClockServer(8080);
+            server.start();
+        } catch (IOException e) {
+            System.out.println("Server error: " + e.getMessage());
+        }
+    }
+}
+
+
+# Commands
+
+javac ClockServer.java
+javac ClockClient.java
+
+java ClockServer
+
+java ClockClient

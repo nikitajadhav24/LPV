@@ -1,0 +1,110 @@
+# ServiceClient.java
+
+import ServiceModule.*;
+import org.omg.CosNaming.*;
+import org.omg.CORBA.*;
+import java.util.Scanner;
+
+public class ServiceClient {
+	public static void main(String args[]) {
+		try {
+			ORB orb = ORB.init(args, null);
+			org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+			NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+			String name = "Service";
+			ServiceInterface service = ServiceInterfaceHelper.narrow(ncRef.resolve_str(name));
+
+			Scanner scanner = new Scanner(System.in);
+			System.out.println("Enter a number: ");
+			int num = scanner.nextInt();
+
+			boolean result = service.isPrime(num);
+			System.out.println("At Client: isPrime(" + num + ") = " + (result ? "Yes" : "No"));
+
+			scanner.close();
+			orb.shutdown(true);
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+
+# ServiceImpl.java
+
+import ServiceModule.*;
+
+public class ServiceImpl extends ServiceInterfacePOA {
+	public boolean isPrime(int num) {
+		boolean result = true;
+		if (num <= 1) {
+			result = false;
+		}
+		for (int i = 2; i < num; i++) {
+			if (num % i == 0) {
+				result = false;
+				break;
+			}
+		}
+		System.out.println("At Server: isPrime(" + num + ") = " + (result ? "Yes" : "No"));
+		return result;
+	}
+}
+
+
+# ServiceModule.idl
+
+module ServiceModule {
+	interface ServiceInterface {
+		boolean isPrime(in long num);
+	};
+};
+
+
+# ServiceServer.java
+
+import ServiceModule.*;
+import org.omg.CosNaming.*;
+import org.omg.CORBA.*;
+import org.omg.PortableServer.*;
+
+public class ServiceServer {
+	public static void main(String args[]) {
+		try {
+			ORB orb = ORB.init(args, null);
+			POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+			rootpoa.the_POAManager().activate();
+
+			ServiceImpl serviceImpl = new ServiceImpl();
+
+			org.omg.CORBA.Object ref = rootpoa.servant_to_reference(serviceImpl);
+			ServiceInterface href = ServiceInterfaceHelper.narrow(ref);
+
+			org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+			NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+			String name = "Service";
+			NameComponent path[] = ncRef.to_name(name);
+
+			ncRef.rebind(path, href);
+
+			System.out.println("Server Started...");
+
+			orb.run();
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+
+# Commands
+
+idlj -fall ServiceModule.idl
+javac *.java ServiceModule/*.java
+orbd -ORBInitialPort 1056
+
+java ServiceServer -ORBInitialPort 1056
+
+java ServiceClient -ORBInitialPort 1056 -ORBInitialHost localhost

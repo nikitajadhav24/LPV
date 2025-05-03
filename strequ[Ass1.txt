@@ -1,0 +1,70 @@
+# Client.java
+
+import java.rmi.*;
+
+public class Client {
+	public static void main(String args[]) {
+		try {
+			String rmiURL = "rmi://localhost/Server";
+			ServerInterface serverInterface = (ServerInterface) Naming.lookup(rmiURL);
+			String s1 = args[0];
+			String s2 = args[1];
+			boolean result = serverInterface.isEqual(s1, s2);
+			System.out.println("At Client: isEqual(" + s1 + "," + s2 + ") = " + (result ? "Yes" : "No"));
+		} catch (Exception e) {
+			System.out.println("Exception: " + e);
+		}
+	}
+}
+
+# Server.java
+
+import java.rmi.*;
+
+public class Server {
+	public static void main(String args[]) {
+		try {
+			ServerImplementation serverImplementation = new ServerImplementation();
+			Naming.rebind("Server", serverImplementation);
+			System.out.println("Server Started...");
+		} catch (Exception e) {
+			System.out.println("Exception:" + e);
+		}
+	}
+}
+
+
+# ServerImplementation.java
+
+import java.rmi.*;
+import java.rmi.server.*;
+
+public class ServerImplementation extends UnicastRemoteObject implements ServerInterface {
+	public ServerImplementation() throws RemoteException {}
+	public boolean isEqual(String s1, String s2) {
+		boolean result = s1.equals(s2);
+		System.out.println("At Serer: isEqual(" + s1 + "," + s2 + ") = " + (result ? "Yes" : "No"));
+		return result;
+	}
+}
+
+
+# ServerInterface.java
+
+import java.rmi.*;
+
+public interface ServerInterface extends Remote {
+	boolean isEqual(String s1, String s2) throws RemoteException;
+}
+
+
+
+# Commands
+
+javac *.java
+rmic ServerImplementation
+rmiregistry
+
+java Server
+
+java Client equ equ
