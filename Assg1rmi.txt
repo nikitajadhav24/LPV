@@ -12,7 +12,7 @@ public class ServerImpl extends UnicastRemoteObject implements ServerIntf {
     public double Add(double a, double b) throws RemoteException {
         return a + b;
     }
-C:\Users\NIKITA\Desktop\Practical\ServerImpl.java
+
     public double Sub(double a, double b) throws RemoteException {
         return a - b;
     }
