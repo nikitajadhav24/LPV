@@ -1,0 +1,42 @@
+import java.util.*;
+
+public class BerkeleyClockSync {
+    public static void main(String[] args) {
+        // Simulated clocks: first one is the coordinator
+        int[] clocks = {100, 102, 97, 105}; // coordinator + 3 clients
+
+        int coordinatorTime = clocks[0];
+        int n = clocks.length;
+        int[] timeDifferences = new int[n];
+
+        System.out.println("Initial clock times:");
+        for (int i = 0; i < n; i++) {
+            System.out.println("Clock[" + i + "] = " + clocks[i]);
+        }
+
+        // Step 1: calculate time differences from coordinator
+        for (int i = 0; i < n; i++) {
+            timeDifferences[i] = clocks[i] - coordinatorTime;
+        }
+
+        // Step 2: calculate average difference
+        int sum = 0;
+        for (int i = 0; i < n; i++) {
+            sum += timeDifferences[i];
+        }
+        int avgOffset = sum / n;
+
+        System.out.println("\nAverage offset: " + avgOffset + " seconds");
+
+        // Step 3: calculate adjustments
+        int[] newTimes = new int[n];
+        for (int i = 0; i < n; i++) {
+            newTimes[i] = clocks[i] - (timeDifferences[i] - avgOffset);
+        }
+
+        System.out.println("\nAdjusted clock times:");
+        for (int i = 0; i < n; i++) {
+            System.out.println("Clock[" + i + "] = " + newTimes[i]);
+        }
+    }
+}
